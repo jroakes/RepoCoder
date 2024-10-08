@@ -8,6 +8,9 @@
 
 RepoCoder is a powerful tool that allows you to analyze and modify your entire code repository using Large Language Models (LLMs) such as Anthropic's Claude or Google's Gemini. It's designed to run in a Jupyter notebook environment, making it easy to review, improve, and refactor your code.
 
+Colab Example: [Notebook](https://colab.research.google.com/drive/1vUIJW1VUWOZbsnAV1WINyNUl6ZSueire#scrollTo=htOxfJ_gIOJs)
+
+
 ## Features
 
 - Crawl and analyze your entire code repository
