@@ -29,13 +29,20 @@ def crawl_directory(
     Returns:
         A tuple containing the directory structure and a list of Python file paths.
     """
-    exclude_extensions = [".pyc", ".pyo", ".pyd"] + (
+    exclude_extensions = [".pyc", ".pyo", ".pyd", ".json"] + (
         additional_exclude_extensions or []
     )
-    exclude_dirs = [".git", "__pycache__", "venv", "venv_seodp", "docs"] + (
-        additional_exclude_dirs or []
+    exclude_dirs = [
+        ".git",
+        "__pycache__",
+        "venv",
+        "venv_seodp",
+        "docs" "build",
+        "dist",
+    ] + (additional_exclude_dirs or [])
+    exclude_files = ["setup.py", "requirements.txt", ".env"] + (
+        additional_exclude_files or []
     )
-    exclude_files = ["setup.py", "requirements.txt"] + (additional_exclude_files or [])
 
     structure: List[Tuple[str, Optional[List]]] = []
     files: List[str] = []
