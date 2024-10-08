@@ -8,8 +8,6 @@
 
 RepoCoder is a powerful tool that allows you to analyze and modify your entire code repository using Large Language Models (LLMs) such as Anthropic's Claude or Google's Gemini. It's designed to run in a Jupyter notebook environment, making it easy to review, improve, and refactor your code.
 
-Colab Example: [Notebook](https://colab.research.google.com/drive/1vUIJW1VUWOZbsnAV1WINyNUl6ZSueire#scrollTo=htOxfJ_gIOJs)
-
 
 ## Features
 
@@ -80,7 +78,8 @@ The Jupyter extension for VS Code provides an integrated notebook experience, al
 
 We provide a Jupyter notebook for easy use of RepoCoder. You can download it directly from our repository:
 
-[Download RepoCoder.ipynb](https://raw.githubusercontent.com/yourusername/repocoder/main/RepoCoder.ipynb)
+[Download RepoCoder.ipynb](https://raw.githubusercontent.com/jroakes/repocoder/main/RepoCoder.ipynb)
+
 
 To use it:
 
@@ -108,6 +107,10 @@ send_for_review(action, llm="anthropic")
 # Or, send for review using Google's Gemini
 # send_for_review(action, llm="gemini")
 ```
+
+Colab Example: [Notebook](https://colab.research.google.com/drive/1vUIJW1VUWOZbsnAV1WINyNUl6ZSueire#scrollTo=htOxfJ_gIOJs)
+
+
 
 ## Contributing
 
