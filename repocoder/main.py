@@ -11,11 +11,12 @@ import re
 
 load_dotenv()
 
+
 def crawl_directory(
-    directory: str = '.',
+    directory: str = ".",
     additional_exclude_extensions: Optional[List[str]] = None,
     additional_exclude_dirs: Optional[List[str]] = None,
-    additional_exclude_files: Optional[List[str]] = None
+    additional_exclude_files: Optional[List[str]] = None,
 ) -> Tuple[List[Tuple[str, Optional[List]]], List[str]]:
     """Crawls a directory and returns a list of file paths and directory structure.
 
@@ -28,27 +29,33 @@ def crawl_directory(
     Returns:
         A tuple containing the directory structure and a list of Python file paths.
     """
-    exclude_extensions = ['.pyc', '.pyo', '.pyd'] + (additional_exclude_extensions or [])
-    exclude_dirs = ['.git', '__pycache__', 'venv', 'venv_seodp', 'docs'] + (additional_exclude_dirs or [])
-    exclude_files = ['setup.py', 'requirements.txt'] + (additional_exclude_files or [])
+    exclude_extensions = [".pyc", ".pyo", ".pyd"] + (
+        additional_exclude_extensions or []
+    )
+    exclude_dirs = [".git", "__pycache__", "venv", "venv_seodp", "docs"] + (
+        additional_exclude_dirs or []
+    )
+    exclude_files = ["setup.py", "requirements.txt"] + (additional_exclude_files or [])
 
     structure: List[Tuple[str, Optional[List]]] = []
     files: List[str] = []
-    
+
     try:
         for root, dirs, filenames in os.walk(directory):
             dirs[:] = [d for d in dirs if d not in exclude_dirs]
-            
+
             rel_path = os.path.relpath(root, directory)
-            if rel_path != '.':
+            if rel_path != ".":
                 structure.append((rel_path, []))
-            
+
             for filename in filenames:
-                if filename not in exclude_files and not any(filename.endswith(ext) for ext in exclude_extensions):
+                if filename not in exclude_files and not any(
+                    filename.endswith(ext) for ext in exclude_extensions
+                ):
                     file_path = os.path.join(root, filename)
                     rel_file_path = os.path.relpath(file_path, directory)
                     structure.append((rel_file_path, None))
-                    if filename.endswith('.py'):
+                    if filename.endswith(".py"):
                         files.append(file_path)
     except PermissionError:
         print(f"Permission denied: {directory}")
@@ -57,7 +64,10 @@ def crawl_directory(
 
     return structure, files
 
-def generate_tree(structure: List[Tuple[str, Optional[List]]], prefix: str = "") -> List[str]:
+
+def generate_tree(
+    structure: List[Tuple[str, Optional[List]]], prefix: str = ""
+) -> List[str]:
     """Generates a tree-like representation of the directory structure.
 
     Args:
@@ -72,11 +82,12 @@ def generate_tree(structure: List[Tuple[str, Optional[List]]], prefix: str = "")
         is_last = i == len(structure) - 1
         branch = "└── " if is_last else "├── "
         new_prefix = prefix + ("    " if is_last else "│   ")
-        
+
         tree.append(f"{prefix}{branch}{name}")
         if substructure:
             tree.extend(generate_tree(substructure, new_prefix))
     return tree
+
 
 def get_code(files: List[str]) -> List[str]:
     """Reads the code from the given files.
@@ -87,9 +98,15 @@ def get_code(files: List[str]) -> List[str]:
     Returns:
         A list of strings, where each string is the content of a file.
     """
-    return [Path(file).read_text(encoding='utf-8') for file in files]
+    return [Path(file).read_text(encoding="utf-8") for file in files]
 
-def write_code(files: List[str], code: List[str], directory_structure: List[str], output_file: str = 'all_code.txt') -> None:
+
+def write_code(
+    files: List[str],
+    code: List[str],
+    directory_structure: List[str],
+    output_file: str = "all_code.txt",
+) -> None:
     """Writes the code and directory structure to a file.
 
     Args:
@@ -99,21 +116,22 @@ def write_code(files: List[str], code: List[str], directory_structure: List[str]
         output_file: The name of the output file.
     """
     try:
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write("Directory Structure:\n")
             f.write("\n".join(directory_structure))
             f.write("\n\nFile Contents:\n\n")
             for file, content in zip(files, code):
-                f.write(f'File Path: {file}\nCode:\n{content}\n\n')
+                f.write(f"File Path: {file}\nCode:\n{content}\n\n")
     except IOError as e:
         print(f"Error writing to {output_file}: {e}", file=sys.stderr)
 
+
 def format_code_for_llm(
-    directory: str = '.',
-    output_file: str = 'all_code.txt',
+    directory: str = ".",
+    output_file: str = "all_code.txt",
     additional_exclude_extensions: Optional[List[str]] = None,
     additional_exclude_dirs: Optional[List[str]] = None,
-    additional_exclude_files: Optional[List[str]] = None
+    additional_exclude_files: Optional[List[str]] = None,
 ) -> str:
     """Formats the code and directory structure for the LLM.
 
@@ -129,13 +147,19 @@ def format_code_for_llm(
         The path to the output file.
     """
     current_dir = Path(directory)
-    structure, files = crawl_directory(current_dir, additional_exclude_extensions, additional_exclude_dirs, additional_exclude_files)
+    structure, files = crawl_directory(
+        current_dir,
+        additional_exclude_extensions,
+        additional_exclude_dirs,
+        additional_exclude_files,
+    )
     code = get_code(files)
-    
-    directory_structure = [str(current_dir.name) + '/'] + generate_tree(structure)
-    
+
+    directory_structure = [str(current_dir.name) + "/"] + generate_tree(structure)
+
     write_code(files, code, directory_structure, output_file)
     return output_file
+
 
 def print_options() -> None:
     """Prints the available options for the user."""
@@ -146,6 +170,7 @@ def print_options() -> None:
     print("4. Code Correction. Action: code-correction")
     print("5. Custom Action. Action: <your custom action>")
 
+
 def display_markdown_response(response: Optional[str]) -> None:
     """Displays the markdown response from the LLM.
 
@@ -154,23 +179,24 @@ def display_markdown_response(response: Optional[str]) -> None:
     """
     if response:
         # Remove '```python' or '```' from the beginning of code blocks
-        cleaned_response = re.sub(r'```(?:python)?\n', '```\n', response)
+        cleaned_response = re.sub(r"```(?:python)?\n", "```\n", response)
 
         # Save the response to a file
-        with open('response.md', 'w', encoding='utf-8') as f:
+        with open("response.md", "w", encoding="utf-8") as f:
             f.write(cleaned_response)
-        
+
         display(Markdown(cleaned_response))
     else:
         print("No response received from the API.")
 
 
 ACTION_DICT: Dict[str, str] = {
-    'code-review': 'Please review the following code and provide suggestions or identify any errors.',
-    'code-improvement': 'Please suggest improvements to the following code.',
-    'code-completion': 'Please add to the following code by adding limited new files or missing functionality.',
-    'code-correction': 'Correct the following code by fixing any errors or issues.'
+    "code-review": "Please review the following code and provide suggestions or identify any errors.",
+    "code-improvement": "Please suggest improvements to the following code.",
+    "code-completion": "Please add to the following code by adding limited new files or missing functionality.",
+    "code-correction": "Correct the following code by fixing any errors or issues.",
 }
+
 
 def create_prompt(content: str, action: str) -> str:
     """Creates the prompt for the LLM.
@@ -210,11 +236,12 @@ def create_prompt(content: str, action: str) -> str:
     {content}
     """
 
+
 def send_to_anthropic_api(
     content: str,
     action: str = "code-review",
     model: str = "claude-3-sonnet-20240229",
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
 ) -> Optional[str]:
     """Sends the code to the Anthropic API.
 
@@ -231,7 +258,9 @@ def send_to_anthropic_api(
         if not api_key:
             api_key = os.getenv("ANTHROPIC_API_KEY")
             if not api_key:
-                raise ValueError("Anthropic API key not provided. Please provide an API key.")
+                raise ValueError(
+                    "Anthropic API key not provided. Please provide an API key."
+                )
 
         prompt = create_prompt(content, action)
 
@@ -241,9 +270,7 @@ def send_to_anthropic_api(
             max_tokens=4096,
             temperature=0.1,
             system="You are a world-class Python developer. Provide complete, error-free code only when changes are made. Include ALL comments in updated code. Never use placeholders or ellipsis. State 'No changes required' without including code if no changes are needed. Format in Markdown with appropriate headers, lists, and code blocks. Use triple backticks for code blocks without language specification. Analyze thoroughly before responding. Provide clear, concise change lists. Follow the exact format in the instructions.",
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
+            messages=[{"role": "user", "content": prompt}],
         )
         return message.content[0].text
     except anthropic.APIError as e:
@@ -252,11 +279,12 @@ def send_to_anthropic_api(
         print(f"Error sending to Anthropic API: {e}", file=sys.stderr)
     return None
 
+
 def send_to_gemini_api(
     content: str,
     action: str = "code-review",
     model_name: str = "gemini-1.5-pro",
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
 ) -> Optional[str]:
     """Sends the code to the Gemini API.
 
@@ -273,7 +301,9 @@ def send_to_gemini_api(
         if not api_key:
             api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
-                raise ValueError("Gemini API key not provided. Please provide an API key.")
+                raise ValueError(
+                    "Gemini API key not provided. Please provide an API key."
+                )
 
         genai.configure(api_key=api_key)
 
@@ -284,39 +314,38 @@ def send_to_gemini_api(
             "Format in Markdown with appropriate headers, lists, and code blocks.",
             "Use triple backticks for code blocks without language specification.",
             "Analyze thoroughly before responding. Provide clear, concise change lists.",
-            "Follow the exact format in the instructions."
+            "Follow the exact format in the instructions.",
         ]
 
         model = GenerativeModel(model_name=model_name)
 
         prompt = create_prompt(content, action)
-        
+
         # Combine system instruction and prompt
         full_prompt = "\n".join(system_instruction) + "\n\n" + prompt
 
         response = model.generate_content(
             full_prompt,
             generation_config=GenerationConfig(
-                temperature=0.1,
-                max_output_tokens=8192,
-                response_mime_type="text/plain"
-            )
+                temperature=0.1, max_output_tokens=8192, response_mime_type="text/plain"
+            ),
         )
         return response.text
     except Exception as e:
         print(f"Error sending to Gemini API: {e}", file=sys.stderr)
     return None
 
+
 def send_for_review(
     action: str = "code-review",
     llm: str = "anthropic",
     model: Optional[str] = None,
     api_key: Optional[str] = None,
-    directory: str = '.',
-    output_file: str = 'all_code.txt',
+    directory: str = ".",
+    output_file: str = "all_code.txt",
     additional_exclude_extensions: Optional[List[str]] = None,
     additional_exclude_dirs: Optional[List[str]] = None,
-    additional_exclude_files: Optional[List[str]] = None
+    additional_exclude_files: Optional[List[str]] = None,
 ) -> None:
     """Sends the code for review using the specified LLM.
 
@@ -333,11 +362,14 @@ def send_for_review(
     """
     try:
         formatted_code_file = format_code_for_llm(
-            directory, output_file, additional_exclude_extensions, 
-            additional_exclude_dirs, additional_exclude_files
+            directory,
+            output_file,
+            additional_exclude_extensions,
+            additional_exclude_dirs,
+            additional_exclude_files,
         )
 
-        with open(formatted_code_file, 'r', encoding='utf-8') as f:
+        with open(formatted_code_file, "r", encoding="utf-8") as f:
             content = f.read()
 
         if not content:
@@ -353,7 +385,9 @@ def send_for_review(
             model = model or "gemini-1.5-pro-002"
             response = send_to_gemini_api(content, action, model, api_key)
         else:
-            raise ValueError(f"Unsupported LLM: {llm}. Please choose either 'anthropic' or 'gemini'.")
+            raise ValueError(
+                f"Unsupported LLM: {llm}. Please choose either 'anthropic' or 'gemini'."
+            )
 
         display_markdown_response(response)
     except FileNotFoundError as e:
