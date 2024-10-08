@@ -5,11 +5,41 @@ from typing import List, Tuple, Optional, Dict, Union
 import anthropic
 import google.generativeai as genai
 from google.generativeai import GenerativeModel, GenerationConfig
-from IPython.display import display, Markdown
+from IPython.display import display, Markdown # type: ignore
 from dotenv import load_dotenv
 import re
+import fnmatch
 
 load_dotenv()
+
+
+def process_gitignore(directory: str = ".") -> Tuple[List[str], List[str], List[str]]:
+    """Processes .gitignore and returns lists of patterns for excluded dirs, files, and extensions.
+    
+    Args:
+        directory: The directory to process.
+        
+    Returns:
+        A tuple containing lists of excluded directories, files, and extensions.
+    """
+    
+    gitignore_path = Path(directory) / ".gitignore"
+    exclude_dirs: List[str] = []
+    exclude_files: List[str] = []
+    exclude_extensions: List[str] = []
+
+    if gitignore_path.exists():
+        with open(gitignore_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    if line.endswith("/"):
+                        exclude_dirs.append(line[:-1])
+                    elif "*" in line:
+                        exclude_extensions.append(line.replace("*.", "."))
+                    else:
+                        exclude_files.append(line)
+    return exclude_dirs, exclude_files, exclude_extensions
 
 
 def crawl_directory(
@@ -17,6 +47,9 @@ def crawl_directory(
     additional_exclude_extensions: Optional[List[str]] = None,
     additional_exclude_dirs: Optional[List[str]] = None,
     additional_exclude_files: Optional[List[str]] = None,
+    gitignore_exclude_dirs: Optional[List[str]] = None,
+    gitignore_exclude_files: Optional[List[str]] = None,
+    gitignore_exclude_extensions: Optional[List[str]] = None,
 ) -> Tuple[List[Tuple[str, Optional[List]]], List[str]]:
     """Crawls a directory and returns a list of file paths and directory structure.
 
@@ -25,31 +58,41 @@ def crawl_directory(
         additional_exclude_extensions: Additional file extensions to exclude.
         additional_exclude_dirs: Additional directories to exclude.
         additional_exclude_files: Additional files to exclude.
+        gitignore_exclude_dirs: Directories to exclude from .gitignore.
+        gitignore_exclude_files: Files to exclude from .gitignore.
+        gitignore_exclude_extensions: Extensions to exclude from .gitignore.
 
     Returns:
         A tuple containing the directory structure and a list of Python file paths.
     """
     exclude_extensions = [".pyc", ".pyo", ".pyd", ".json"] + (
         additional_exclude_extensions or []
-    )
+    ) + (gitignore_exclude_extensions or [])
+
     exclude_dirs = [
         ".git",
         "__pycache__",
         "venv",
         "venv_seodp",
-        "docs" "build",
+        "docs",
+        "build",
         "dist",
-    ] + (additional_exclude_dirs or [])
+    ] + (additional_exclude_dirs or []) + (gitignore_exclude_dirs or [])
+
     exclude_files = ["setup.py", "requirements.txt", ".env"] + (
         additional_exclude_files or []
-    )
+    ) + (gitignore_exclude_files or [])
 
     structure: List[Tuple[str, Optional[List]]] = []
     files: List[str] = []
 
     try:
         for root, dirs, filenames in os.walk(directory):
-            dirs[:] = [d for d in dirs if d not in exclude_dirs]
+            dirs[:] = [
+                d
+                for d in dirs
+                if d not in exclude_dirs and not any(fnmatch.fnmatch(d, pattern) for pattern in gitignore_exclude_dirs or [])
+            ]
 
             rel_path = os.path.relpath(root, directory)
             if rel_path != ".":
@@ -58,7 +101,8 @@ def crawl_directory(
             for filename in filenames:
                 if filename not in exclude_files and not any(
                     filename.endswith(ext) for ext in exclude_extensions
-                ):
+                ) and not any(fnmatch.fnmatch(filename, pattern) for pattern in gitignore_exclude_extensions or []):
+
                     file_path = os.path.join(root, filename)
                     rel_file_path = os.path.relpath(file_path, directory)
                     structure.append((rel_file_path, None))
@@ -133,12 +177,14 @@ def write_code(
         print(f"Error writing to {output_file}: {e}", file=sys.stderr)
 
 
+
 def format_code_for_llm(
     directory: str = ".",
     output_file: str = "all_code.txt",
     additional_exclude_extensions: Optional[List[str]] = None,
     additional_exclude_dirs: Optional[List[str]] = None,
     additional_exclude_files: Optional[List[str]] = None,
+    use_gitignore: bool = True,
 ) -> str:
     """Formats the code and directory structure for the LLM.
 
@@ -148,17 +194,25 @@ def format_code_for_llm(
         additional_exclude_extensions: Additional file extensions to exclude.
         additional_exclude_dirs: Additional directories to exclude.
         additional_exclude_files: Additional files to exclude.
-
+        use_gitignore: Whether to use .gitignore file to exclude files and directories.
 
     Returns:
         The path to the output file.
     """
     current_dir = Path(directory)
+
+    gitignore_exclude_dirs, gitignore_exclude_files, gitignore_exclude_extensions = [], [], []
+    if use_gitignore:
+        gitignore_exclude_dirs, gitignore_exclude_files, gitignore_exclude_extensions = process_gitignore(directory)
+
     structure, files = crawl_directory(
         current_dir,
         additional_exclude_extensions,
         additional_exclude_dirs,
         additional_exclude_files,
+        gitignore_exclude_dirs,
+        gitignore_exclude_files,
+        gitignore_exclude_extensions,
     )
     code = get_code(files)
 
@@ -353,6 +407,7 @@ def send_for_review(
     additional_exclude_extensions: Optional[List[str]] = None,
     additional_exclude_dirs: Optional[List[str]] = None,
     additional_exclude_files: Optional[List[str]] = None,
+    use_gitignore: bool = True,
 ) -> None:
     """Sends the code for review using the specified LLM.
 
@@ -366,6 +421,7 @@ def send_for_review(
         additional_exclude_extensions: Additional file extensions to exclude.
         additional_exclude_dirs: Additional directories to exclude.
         additional_exclude_files: Additional files to exclude.
+        use_gitignore: Whether to use .gitignore file to exclude files and directories.
     """
     try:
         formatted_code_file = format_code_for_llm(
@@ -374,6 +430,7 @@ def send_for_review(
             additional_exclude_extensions,
             additional_exclude_dirs,
             additional_exclude_files,
+            use_gitignore,
         )
 
         with open(formatted_code_file, "r", encoding="utf-8") as f:
@@ -403,3 +460,4 @@ def send_for_review(
         print(f"Error reading file: {e}", file=sys.stderr)
     except Exception as e:
         print(f"An error occurred: {e}", file=sys.stderr)
+
