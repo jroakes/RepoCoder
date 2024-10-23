@@ -106,8 +106,8 @@ def crawl_directory(
                     file_path = os.path.join(root, filename)
                     rel_file_path = os.path.relpath(file_path, directory)
                     structure.append((rel_file_path, None))
-                    if filename.endswith(".py"):
-                        files.append(file_path)
+                    files.append(file_path)
+                
     except PermissionError:
         print(f"Permission denied: {directory}")
     except Exception as e:
