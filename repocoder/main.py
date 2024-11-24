@@ -12,6 +12,27 @@ import fnmatch
 
 load_dotenv()
 
+# Default exclusion lists
+DEFAULT_EXCLUDE_DIRS = [
+    ".git",
+    "__pycache__",
+    "venv",
+    "docs",
+    "build",
+    "dist",
+]
+
+DEFAULT_EXCLUDE_FILES = [
+    "setup.py",
+    "requirements.txt",
+    ".env"
+]
+
+DEFAULT_EXCLUDE_EXTENSIONS = [
+    ".pyc",
+    ".pyo",
+    ".pyd"
+]
 
 def process_gitignore(directory: str = ".") -> Tuple[List[str], List[str], List[str]]:
     """Processes .gitignore and returns lists of patterns for excluded dirs, files, and extensions.
@@ -50,6 +71,7 @@ def crawl_directory(
     gitignore_exclude_dirs: Optional[List[str]] = None,
     gitignore_exclude_files: Optional[List[str]] = None,
     gitignore_exclude_extensions: Optional[List[str]] = None,
+    use_default_exclusions: bool = True,
 ) -> Tuple[List[Tuple[str, Optional[List]]], List[str]]:
     """Crawls a directory and returns a list of file paths and directory structure.
 
@@ -61,25 +83,21 @@ def crawl_directory(
         gitignore_exclude_dirs: Directories to exclude from .gitignore.
         gitignore_exclude_files: Files to exclude from .gitignore.
         gitignore_exclude_extensions: Extensions to exclude from .gitignore.
+        use_default_exclusions: Whether to use the default exclusion lists.
 
     Returns:
         A tuple containing the directory structure and a list of Python file paths.
     """
-    exclude_extensions = [".pyc", ".pyo", ".pyd", ".json"] + (
+    # Initialize exclusion lists based on use_default_exclusions
+    exclude_extensions = (DEFAULT_EXCLUDE_EXTENSIONS if use_default_exclusions else []) + (
         additional_exclude_extensions or []
     ) + (gitignore_exclude_extensions or [])
 
-    exclude_dirs = [
-        ".git",
-        "__pycache__",
-        "venv",
-        "venv_seodp",
-        "docs",
-        "build",
-        "dist",
-    ] + (additional_exclude_dirs or []) + (gitignore_exclude_dirs or [])
+    exclude_dirs = (DEFAULT_EXCLUDE_DIRS if use_default_exclusions else []) + (
+        additional_exclude_dirs or []
+    ) + (gitignore_exclude_dirs or [])
 
-    exclude_files = ["setup.py", "requirements.txt", ".env"] + (
+    exclude_files = (DEFAULT_EXCLUDE_FILES if use_default_exclusions else []) + (
         additional_exclude_files or []
     ) + (gitignore_exclude_files or [])
 
@@ -177,7 +195,6 @@ def write_code(
         print(f"Error writing to {output_file}: {e}", file=sys.stderr)
 
 
-
 def format_code_for_llm(
     directory: str = ".",
     output_file: str = "all_code.txt",
@@ -185,6 +202,7 @@ def format_code_for_llm(
     additional_exclude_dirs: Optional[List[str]] = None,
     additional_exclude_files: Optional[List[str]] = None,
     use_gitignore: bool = True,
+    use_default_exclusions: bool = True,
 ) -> str:
     """Formats the code and directory structure for the LLM.
 
@@ -195,6 +213,7 @@ def format_code_for_llm(
         additional_exclude_dirs: Additional directories to exclude.
         additional_exclude_files: Additional files to exclude.
         use_gitignore: Whether to use .gitignore file to exclude files and directories.
+        use_default_exclusions: Whether to use the default exclusion lists.
 
     Returns:
         The path to the output file.
@@ -213,6 +232,7 @@ def format_code_for_llm(
         gitignore_exclude_dirs,
         gitignore_exclude_files,
         gitignore_exclude_extensions,
+        use_default_exclusions,
     )
     code = get_code(files)
 
@@ -301,7 +321,7 @@ def create_prompt(content: str, action: str) -> str:
 def send_to_anthropic_api(
     content: str,
     action: str = "code-review",
-    model: str = "claude-3-sonnet-20240229",
+    model: str = "claude-3-sonnet-latest",
     api_key: Optional[str] = None,
 ) -> Optional[str]:
     """Sends the code to the Anthropic API.
@@ -408,6 +428,7 @@ def send_for_review(
     additional_exclude_dirs: Optional[List[str]] = None,
     additional_exclude_files: Optional[List[str]] = None,
     use_gitignore: bool = True,
+    use_default_exclusions: bool = True,
 ) -> None:
     """Sends the code for review using the specified LLM.
 
@@ -422,6 +443,7 @@ def send_for_review(
         additional_exclude_dirs: Additional directories to exclude.
         additional_exclude_files: Additional files to exclude.
         use_gitignore: Whether to use .gitignore file to exclude files and directories.
+        use_default_exclusions: Whether to use the default exclusion lists.
     """
     try:
         formatted_code_file = format_code_for_llm(
@@ -431,6 +453,7 @@ def send_for_review(
             additional_exclude_dirs,
             additional_exclude_files,
             use_gitignore,
+            use_default_exclusions,
         )
 
         with open(formatted_code_file, "r", encoding="utf-8") as f:
@@ -443,7 +466,7 @@ def send_for_review(
             raise ValueError("Invalid action. Please provide a valid action string.")
 
         if llm.lower() == "anthropic":
-            model = model or "claude-3-5-sonnet-20240620"
+            model = model or "claude-3-sonnet-latest"
             response = send_to_anthropic_api(content, action, model, api_key)
         elif llm.lower() == "gemini":
             model = model or "gemini-1.5-pro-002"
@@ -460,4 +483,3 @@ def send_for_review(
         print(f"Error reading file: {e}", file=sys.stderr)
     except Exception as e:
         print(f"An error occurred: {e}", file=sys.stderr)
-
