@@ -321,7 +321,7 @@ def create_prompt(content: str, action: str) -> str:
 def send_to_anthropic_api(
     content: str,
     action: str = "code-review",
-    model: str = "claude-3-sonnet-latest",
+    model: str = "claude-3-5-sonnet-latest",
     api_key: Optional[str] = None,
 ) -> Optional[str]:
     """Sends the code to the Anthropic API.
@@ -466,7 +466,7 @@ def send_for_review(
             raise ValueError("Invalid action. Please provide a valid action string.")
 
         if llm.lower() == "anthropic":
-            model = model or "claude-3-sonnet-latest"
+            model = model or "claude-3-5-sonnet-latest"
             response = send_to_anthropic_api(content, action, model, api_key)
         elif llm.lower() == "gemini":
             model = model or "gemini-1.5-pro-002"

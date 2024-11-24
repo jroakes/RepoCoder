@@ -1,8 +1,8 @@
-# RepoCode
+# RepoCoder
 
 ⚠️ **IMPORTANT ALERT** ⚠️
 
-**This tool sends most Python file code in your current folder to a third-party Large Language Model (LLM) via API. It is designed for use with limited size Python projects.  It can be adapted for other languages easily bu forking and updateing the code.  Currently Anthropic supports 200k tokens of context and Gemini supports 2M. For most small projects this is plenty. You will need to modify  to add significant complexity (DAGs, RAG, etc) if using for larger projects. **
+**This tool sends most Python file code in your current folder to a third-party Large Language Model (LLM) via API. It is designed for use with limited size Python projects.  It can be adapted for other languages easily by forking and updating the code.  Currently Anthropic supports 200k tokens of context and Gemini supports 2M. For most small projects this is plenty. You will need to modify  to add significant complexity (DAGs, RAG, etc) if using for larger projects. **
 
 RepoCoder is a Python package that allows you to send your code for review using Large Language Models (LLMs) like Anthropic's Claude or Google's Gemini. It provides an easy way to get code reviews, suggestions for improvements, and more.
 
