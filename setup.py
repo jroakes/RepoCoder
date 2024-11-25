@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="repocoder",
-    version="0.1.9",
+    version="0.1.15",
     author="JR Oakes",
     author_email="jroakes@gmail.com",
     description="A tool for analyzing and modifying code repositories using LLMs",
@@ -30,5 +30,6 @@ setup(
         "google-generativeai",
         "python-dotenv",
         "anthropic",
+        "chardet"
     ],
 )

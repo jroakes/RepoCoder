@@ -9,6 +9,7 @@ from IPython.display import display, Markdown # type: ignore
 from dotenv import load_dotenv
 import re
 import fnmatch
+import chardet
 
 load_dotenv()
 
@@ -44,22 +45,39 @@ def process_gitignore(directory: str = ".") -> Tuple[List[str], List[str], List[
         A tuple containing lists of excluded directories, files, and extensions.
     """
     
-    gitignore_path = Path(directory) / ".gitignore"
     exclude_dirs: List[str] = []
     exclude_files: List[str] = []
     exclude_extensions: List[str] = []
 
-    if gitignore_path.exists():
-        with open(gitignore_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    if line.endswith("/"):
-                        exclude_dirs.append(line[:-1])
-                    elif "*" in line:
-                        exclude_extensions.append(line.replace("*.", "."))
-                    else:
-                        exclude_files.append(line)
+    # Check both local and root .gitignore files
+    gitignore_paths = [
+        Path(directory) / ".gitignore",
+        Path(directory).resolve().parent / ".gitignore"
+    ]
+
+    for gitignore_path in gitignore_paths:
+        try:
+            if gitignore_path.exists():
+                with open(gitignore_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#"):
+                            if line.endswith("/"):
+                                # Directory pattern
+                                exclude_dirs.append(line[:-1])
+                            elif line.startswith("*."):
+                                # Extension pattern
+                                exclude_extensions.append(line.replace("*", ""))
+                            elif "*" in line:
+                                # Wildcard pattern for files
+                                exclude_files.append(line)
+                            else:
+                                # Specific file or directory
+                                exclude_files.append(line)
+        except IOError as e:
+            print(f"Warning: Error reading {gitignore_path}: {e}", file=sys.stderr)
+            continue
+
     return exclude_dirs, exclude_files, exclude_extensions
 
 
@@ -159,7 +177,7 @@ def generate_tree(
 
 
 def get_code(files: List[str]) -> List[str]:
-    """Reads the code from the given files.
+    """Reads the code from the given files with robust encoding detection.
 
     Args:
         files: A list of file paths.
@@ -167,7 +185,64 @@ def get_code(files: List[str]) -> List[str]:
     Returns:
         A list of strings, where each string is the content of a file.
     """
-    return [Path(file).read_text(encoding="utf-8") for file in files]
+    contents = []
+    # Common encodings to try first, in order of likelihood
+    common_encodings = ['utf-8', 'ascii', 'iso-8859-1', 'windows-1252', 'utf-16']
+    
+    for file in files:
+        content = None
+        try:
+            # First try reading with common encodings
+            for encoding in common_encodings:
+                try:
+                    with open(file, 'r', encoding=encoding) as f:
+                        content = f.read()
+                        break
+                except UnicodeDecodeError:
+                    continue
+                except Exception as e:
+                    print(f"Warning: Error reading {file} with {encoding}: {e}", file=sys.stderr)
+                    continue
+            
+            # If common encodings fail, use chardet
+            if content is None:
+                # Read file in chunks to handle large files
+                chunk_size = 1024 * 1024  # 1MB chunks
+                raw_data = b''
+                
+                with open(file, 'rb') as f:
+                    chunk = f.read(chunk_size)
+                    if chunk:  # Just read the first chunk for detection
+                        raw_data = chunk
+                
+                if raw_data:
+                    detected = chardet.detect(raw_data)
+                    if detected and detected['encoding']:
+                        try:
+                            with open(file, 'r', encoding=detected['encoding']) as f:
+                                content = f.read()
+                        except UnicodeDecodeError:
+                            pass
+            
+            # Final fallback to latin-1
+            if content is None:
+                try:
+                    with open(file, 'r', encoding='latin-1') as f:
+                        content = f.read()
+                except Exception as e:
+                    print(f"Error: Final fallback failed for {file}: {e}", file=sys.stderr)
+                    content = f"# Error reading file {file}: Unable to determine correct encoding"
+            
+            contents.append(content)
+            
+        except MemoryError:
+            print(f"Error: File {file} is too large to process", file=sys.stderr)
+            contents.append(f"# Error: File {file} is too large to process")
+        except Exception as e:
+            print(f"Error: Unexpected error reading {file}: {e}", file=sys.stderr)
+            contents.append(f"# Error reading file {file}: {str(e)}")
+            
+    return contents
 
 
 def write_code(
